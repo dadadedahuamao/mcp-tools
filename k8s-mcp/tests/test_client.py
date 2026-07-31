@@ -70,6 +70,76 @@ def test_list_limit_rejects_excessive_value() -> None:
         reader.list_pods("ns-demo", limit=501)
 
 
+def test_list_and_get_config_map_return_non_secret_data(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict] = []
+
+    config_map = SimpleNamespace(
+        metadata=SimpleNamespace(name="nginx-config", namespace="ns-demo", creation_timestamp=None, labels={}),
+        data={"nginx.conf": "worker_processes 1;"},
+        binary_data={"binary.conf": "YQ=="},
+        immutable=True,
+    )
+
+    class FakeCoreV1Api:
+        def __init__(self, _: object) -> None:
+            pass
+
+        def list_namespaced_config_map(self, **kwargs: object) -> SimpleNamespace:
+            calls.append(kwargs)
+            return SimpleNamespace(items=[config_map])
+
+        def read_namespaced_config_map(self, **kwargs: object) -> SimpleNamespace:
+            calls.append(kwargs)
+            return config_map
+
+    monkeypatch.setattr("k8s_mcp.client.client.CoreV1Api", FakeCoreV1Api)
+    reader = KubernetesReader(api_client=object(), context="uat")
+
+    assert reader.list_config_maps("ns-demo", "app=nginx", 10) == [
+        {"name": "nginx-config", "namespace": "ns-demo", "creation_timestamp": None, "labels": {}, "data_keys": ["nginx.conf"], "binary_data_keys": ["binary.conf"], "immutable": True}
+    ]
+    assert reader.get_config_map("ns-demo", "nginx-config")["data"] == {"nginx.conf": "worker_processes 1;"}
+    assert calls == [
+        {"namespace": "ns-demo", "label_selector": "app=nginx", "limit": 10},
+        {"name": "nginx-config", "namespace": "ns-demo"},
+    ]
+
+
+def test_get_pod_mounts_returns_references_without_secret_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    pod = SimpleNamespace(
+        metadata=SimpleNamespace(name="nginx", namespace="ns-demo", creation_timestamp=None, labels={}),
+        spec=SimpleNamespace(
+            volumes=[
+                SimpleNamespace(name="config", config_map=SimpleNamespace(name="nginx-config"), persistent_volume_claim=None, secret=None, projected=None),
+                SimpleNamespace(name="tls", config_map=None, persistent_volume_claim=None, secret=SimpleNamespace(secret_name="nginx-tls"), projected=None),
+            ],
+            containers=[SimpleNamespace(name="nginx", volume_mounts=[SimpleNamespace(name="config", mount_path="/etc/nginx", read_only=True), SimpleNamespace(name="tls", mount_path="/etc/tls", read_only=True)])],
+            init_containers=[],
+        ),
+    )
+
+    class FakeCoreV1Api:
+        def __init__(self, _: object) -> None:
+            pass
+
+        def read_namespaced_pod(self, **kwargs: object) -> SimpleNamespace:
+            assert kwargs == {"name": "nginx", "namespace": "ns-demo"}
+            return pod
+
+    monkeypatch.setattr("k8s_mcp.client.client.CoreV1Api", FakeCoreV1Api)
+    reader = KubernetesReader(api_client=object(), context="uat")
+
+    result = reader.get_pod_mounts("ns-demo", "nginx")
+
+    assert result["volumes"] == [
+        {"name": "config", "source_type": "config_map", "source_name": "nginx-config"},
+        {"name": "tls", "source_type": "secret", "source_name": "nginx-tls"},
+    ]
+    assert result["containers"] == [
+        {"name": "nginx", "mounts": [{"volume_name": "config", "mount_path": "/etc/nginx", "read_only": True}, {"volume_name": "tls", "mount_path": "/etc/tls", "read_only": True}]}
+    ]
+
+
 def test_download_pod_logs_writes_to_safe_task_directory(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

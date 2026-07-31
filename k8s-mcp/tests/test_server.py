@@ -21,6 +21,9 @@ def test_server_registers_only_read_only_tools() -> None:
         "get_pod",
         "list_deployments",
         "list_events",
+        "list_config_maps",
+        "get_config_map",
+        "get_pod_mounts",
         "get_pod_logs",
         "download_pod_logs",
     }

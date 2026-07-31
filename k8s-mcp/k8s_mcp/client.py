@@ -159,6 +159,50 @@ class KubernetesReader:
         except ApiException as error:
             raise _api_error(error) from error
 
+    def list_config_maps(
+        self, namespace: str, label_selector: str | None = None, limit: int = DEFAULT_LIMIT
+    ) -> list[dict[str, Any]]:
+        """按命名空间限量列出 ConfigMap 摘要，不返回配置内容。"""
+
+        limit = _positive_limit(limit, MAX_LIMIT, "limit")
+        try:
+            response = client.CoreV1Api(self.api_client).list_namespaced_config_map(
+                namespace=namespace, label_selector=label_selector, limit=limit
+            )
+            return [self._config_map_summary(item) for item in response.items]
+        except ApiException as error:
+            raise _api_error(error) from error
+
+    def get_config_map(self, namespace: str, name: str) -> dict[str, Any]:
+        """读取指定 ConfigMap 的文本配置；二进制字段只返回键名。"""
+
+        try:
+            config_map = client.CoreV1Api(self.api_client).read_namespaced_config_map(
+                name=name, namespace=namespace
+            )
+            return {
+                **self._config_map_summary(config_map),
+                "data": config_map.data or {},
+            }
+        except ApiException as error:
+            raise _api_error(error) from error
+
+    def get_pod_mounts(self, namespace: str, name: str) -> dict[str, Any]:
+        """读取 Pod 的卷来源和容器挂载路径，不读取 Secret 或容器文件内容。"""
+
+        try:
+            pod = client.CoreV1Api(self.api_client).read_namespaced_pod(
+                name=name, namespace=namespace
+            )
+            return {
+                **_metadata(pod),
+                "volumes": [self._volume_summary(volume) for volume in (pod.spec.volumes or [])],
+                "containers": self._container_mounts(pod.spec.containers or []),
+                "init_containers": self._container_mounts(pod.spec.init_containers or []),
+            }
+        except ApiException as error:
+            raise _api_error(error) from error
+
     def get_pod_logs(self, namespace: str, name: str, container: str, tail_lines: int = DEFAULT_TAIL_LINES, limit_bytes: int = DEFAULT_LOG_BYTES) -> dict[str, Any]:
         """读取指定容器的有限尾部日志，永不跟随持续输出。"""
 
@@ -214,3 +258,53 @@ class KubernetesReader:
         for state in item.status.container_statuses or []:
             containers.append({"name": state.name, "ready": state.ready, "restart_count": state.restart_count, "image": state.image, "state": "running" if state.state.running else "waiting" if state.state.waiting else "terminated" if state.state.terminated else "unknown"})
         return {**_metadata(item), "phase": item.status.phase, "pod_ip": item.status.pod_ip, "node_name": item.spec.node_name, "containers": containers}
+
+    @staticmethod
+    def _config_map_summary(config_map: Any) -> dict[str, Any]:
+        """返回 ConfigMap 元数据和键名，避免列表查询传输完整配置。"""
+
+        return {
+            **_metadata(config_map),
+            "data_keys": sorted((config_map.data or {}).keys()),
+            "binary_data_keys": sorted((config_map.binary_data or {}).keys()),
+            "immutable": config_map.immutable,
+        }
+
+    @staticmethod
+    def _volume_summary(volume: Any) -> dict[str, Any]:
+        """提取卷来源引用；Secret 仅暴露资源名称，不读取其值。"""
+
+        sources = (
+            ("config_map", getattr(volume, "config_map", None), "name"),
+            ("persistent_volume_claim", getattr(volume, "persistent_volume_claim", None), "claim_name"),
+            ("secret", getattr(volume, "secret", None), "secret_name"),
+        )
+        for source_type, source, name_field in sources:
+            if source is not None:
+                return {
+                    "name": volume.name,
+                    "source_type": source_type,
+                    "source_name": getattr(source, name_field, None),
+                }
+        if getattr(volume, "projected", None) is not None:
+            return {"name": volume.name, "source_type": "projected", "source_name": None}
+        return {"name": volume.name, "source_type": "other", "source_name": None}
+
+    @staticmethod
+    def _container_mounts(containers: list[Any]) -> list[dict[str, Any]]:
+        """转换容器挂载关系，供 ConfigMap 与挂载排查关联使用。"""
+
+        return [
+            {
+                "name": container.name,
+                "mounts": [
+                    {
+                        "volume_name": mount.name,
+                        "mount_path": mount.mount_path,
+                        "read_only": bool(mount.read_only),
+                    }
+                    for mount in (container.volume_mounts or [])
+                ],
+            }
+            for container in containers
+        ]

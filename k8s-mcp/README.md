@@ -41,6 +41,8 @@ limit: 100
 | `list_pods` / `get_pod` | 查询 Pod 与容器状态 | `list_pods` 支持标签选择器，`limit` 为 1-500 |
 | `list_deployments` | 查询 Deployment 副本状态 | 支持标签选择器，`limit` 为 1-500 |
 | `list_events` | 查询 Events v1 事件 | `limit` 为 1-500 |
+| `list_config_maps` / `get_config_map` | 查询 ConfigMap 键名或文本 data | 不读取 Secret；列表查询支持标签选择器，`limit` 为 1-500 |
+| `get_pod_mounts` | 查询 Pod 卷来源和容器挂载路径 | Secret 仅返回名称引用，不读取内容；不执行容器命令 |
 | `get_pod_logs` | 获取指定容器的尾部日志 | 不支持 follow；`tail_lines` 为 1-2000，`limit_bytes` 为 1-262144 |
 | `download_pod_logs` | 下载指定容器的尾部日志 | 写入当前工作区 `.codex-tmp/k8s/<task_id>/`；不允许指定输出路径；与 `get_pod_logs` 使用相同限制 |
 

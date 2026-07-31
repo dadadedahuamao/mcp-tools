@@ -47,6 +47,18 @@ def create_server() -> FastMCP:
     def list_events(kubeconfig: str, namespace: str, context: str | None = None, limit: int = DEFAULT_LIMIT) -> list[dict]:
         return reader(kubeconfig, context).list_events(namespace, limit)
 
+    @server.tool(name="list_config_maps", description="按 namespace 限量列出 ConfigMap 摘要和键名，支持标签选择器。")
+    def list_config_maps(kubeconfig: str, namespace: str, context: str | None = None, label_selector: str | None = None, limit: int = DEFAULT_LIMIT) -> list[dict]:
+        return reader(kubeconfig, context).list_config_maps(namespace, label_selector, limit)
+
+    @server.tool(name="get_config_map", description="读取指定 ConfigMap 的文本 data；不会读取 Secret 或执行容器命令。")
+    def get_config_map(kubeconfig: str, namespace: str, name: str, context: str | None = None) -> dict:
+        return reader(kubeconfig, context).get_config_map(namespace, name)
+
+    @server.tool(name="get_pod_mounts", description="读取 Pod 的卷来源和容器挂载路径；Secret 仅返回名称引用。")
+    def get_pod_mounts(kubeconfig: str, namespace: str, name: str, context: str | None = None) -> dict:
+        return reader(kubeconfig, context).get_pod_mounts(namespace, name)
+
     @server.tool(name="get_pod_logs", description="读取指定容器的有限尾部日志，不支持持续跟随。")
     def get_pod_logs(kubeconfig: str, namespace: str, name: str, container: str, context: str | None = None, tail_lines: int = DEFAULT_TAIL_LINES, limit_bytes: int = DEFAULT_LOG_BYTES) -> dict:
         return reader(kubeconfig, context).get_pod_logs(namespace, name, container, tail_lines, limit_bytes)
