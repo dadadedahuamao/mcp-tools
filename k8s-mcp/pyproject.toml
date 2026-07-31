@@ -1,0 +1,17 @@
+[project]
+name = "k8s-mcp"
+version = "0.1.0"
+description = "仅提供 Kubernetes 集群信息查询的本地 MCP"
+requires-python = ">=3.12"
+dependencies = [
+  "kubernetes>=32.0,<33.0",
+  "mcp>=1.0,<2.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=9.0,<10.0"]
+build = ["pyinstaller>=6.0,<7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

@@ -1,0 +1,16 @@
+[project]
+name = "loki-mcp"
+version = "0.1.0"
+description = "根据项目 env.yaml 查询 Grafana Loki 的本地只读 MCP"
+requires-python = ">=3.12"
+dependencies = [
+  "mcp>=1.0,<2.0",
+  "PyYAML>=6.0,<7.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=9.0,<10.0"]
+build = ["pyinstaller>=6.0,<7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
