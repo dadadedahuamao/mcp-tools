@@ -1,0 +1,26 @@
+[project]
+name = "db-mcp"
+version = "0.1.0"
+description = "面向生产排障的数据库只读 MCP"
+requires-python = ">=3.12"
+dependencies = [
+  "mcp>=1.0,<2.0",
+  "PyYAML>=6.0,<7.0",
+  "sqlglot>=26.0,<28.0",
+  "SQLAlchemy>=2.0,<3.0",
+  "PyMySQL>=1.1,<2.0",
+  "psycopg[binary]>=3.2,<4.0",
+  "oracledb>=2.5,<4.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=9.0,<10.0"]
+build = ["pyinstaller>=6.0,<7.0"]
+integration = ["testcontainers[mysql,postgres]>=4.0,<5.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: requires Docker and TEST_DATABASE_INTEGRATION=1"]
+
+[tool.setuptools.packages.find]
+include = ["db_mcp*"]

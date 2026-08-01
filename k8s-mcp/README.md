@@ -52,3 +52,20 @@ limit: 100
 - 响应不返回 kubeconfig、token、客户端证书、私钥或认证请求头。
 - API 错误被转换为中文概述，不返回原始 HTTP 响应内容。
 - 是否能查询某资源仍由 kubeconfig 对应身份的 Kubernetes RBAC 权限决定。
+
+## Linux Docker 部署
+
+远程服务不接受调用者本地 kubeconfig。将三套 MCP 共用的 `env.yaml` 和其中引用的 kubeconfig 放入服务器 `config/`：
+
+```bash
+mkdir -p config
+cp /path/to/env.yaml config/env.yaml
+cp /path/to/cce-cloudpond-uat-mes-kubeconfig.yaml config/cce-cloudpond-uat-mes-kubeconfig.yaml
+cp .env.example .env
+# 编辑 .env，将 K8S_MCP_ALLOWED_HOST 改为实际服务器 IP 或域名及端口
+chmod 600 config/env.yaml config/*kubeconfig.yaml
+chown 10001:10001 config/env.yaml config/*kubeconfig.yaml
+docker-compose up -d --build
+```
+
+服务地址为 `http://<服务器IP或域名>:8002/mcp`。`.env` 中的 `K8S_MCP_ALLOWED_HOST` 必须与该 URL 中的 `IP 或域名:8002` 一致。远程调用以统一配置中的 `env_name` 作为 `cluster` 参数；仅含 `k8s_kubeconfig` 的环境会被注册。配置文件和 kubeconfig 均以只读卷挂载，不会写入镜像。

@@ -1,13 +1,93 @@
 """kubeconfig 路径校验和显式客户端配置加载。"""
 
 from pathlib import Path
+from dataclasses import dataclass
+from typing import Any
 
 from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
+import yaml
 
 
 class KubernetesConfigurationError(ValueError):
     """kubeconfig 不存在、不可读或不符合 Kubernetes 配置格式。"""
+
+
+@dataclass(frozen=True)
+class RegisteredCluster:
+    """服务端预注册的 Kubernetes 集群。"""
+
+    alias: str
+    kubeconfig: Path
+    context: str | None
+
+
+def load_cluster_registry(config_file: Path) -> dict[str, RegisteredCluster]:
+    """读取服务端集群别名，拒绝任意调用方指定 kubeconfig。"""
+
+    if not config_file.is_absolute() or not config_file.is_file():
+        raise KubernetesConfigurationError("集群配置文件必须是存在的绝对文件路径")
+    try:
+        data = yaml.safe_load(config_file.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError) as error:
+        raise KubernetesConfigurationError("无法读取或解析集群配置文件") from error
+    raw_clusters = data.get("clusters") if isinstance(data, dict) else None
+    if not isinstance(raw_clusters, dict) or not raw_clusters:
+        raise KubernetesConfigurationError("集群配置缺少 clusters 对象")
+    clusters: dict[str, RegisteredCluster] = {}
+    for alias, raw in raw_clusters.items():
+        if not isinstance(alias, str) or not alias.strip() or not isinstance(raw, dict):
+            raise KubernetesConfigurationError("集群别名和配置必须有效")
+        kubeconfig = raw.get("kubeconfig")
+        if not isinstance(kubeconfig, str):
+            raise KubernetesConfigurationError(f"集群 {alias} 缺少 kubeconfig")
+        context = raw.get("context")
+        if context is not None and (not isinstance(context, str) or not context.strip()):
+            raise KubernetesConfigurationError(f"集群 {alias} 的 context 必须是非空字符串")
+        clusters[alias] = RegisteredCluster(alias.strip(), validate_kubeconfig_path(kubeconfig), context.strip() if context else None)
+    return clusters
+
+
+def load_environment_registry(env_file: Path, kubeconfig_dir: Path) -> dict[str, RegisteredCluster]:
+    """从共享 env.yaml 注册含 k8s_kubeconfig 的环境。"""
+
+    if not env_file.is_absolute() or not env_file.is_file():
+        raise KubernetesConfigurationError("环境配置文件必须是存在的绝对文件路径")
+    if not kubeconfig_dir.is_absolute() or not kubeconfig_dir.is_dir():
+        raise KubernetesConfigurationError("kubeconfig 目录必须是存在的绝对目录")
+    try:
+        data = yaml.safe_load(env_file.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError) as error:
+        raise KubernetesConfigurationError("无法读取或解析环境配置文件") from error
+    environments = data.get("env") if isinstance(data, dict) else None
+    if not isinstance(environments, list):
+        raise KubernetesConfigurationError("环境配置缺少 env 环境列表")
+
+    clusters: dict[str, RegisteredCluster] = {}
+    for item in environments:
+        if not isinstance(item, dict):
+            raise KubernetesConfigurationError("env 环境列表只能包含对象")
+        kubeconfig_value = item.get("k8s_kubeconfig")
+        if kubeconfig_value in (None, ""):
+            continue
+        alias = item.get("env_name")
+        if not isinstance(alias, str) or not alias.strip():
+            raise KubernetesConfigurationError("包含 k8s_kubeconfig 的环境必须提供 env_name")
+        if not isinstance(kubeconfig_value, str):
+            raise KubernetesConfigurationError(f"环境 {alias} 的 k8s_kubeconfig 必须是字符串")
+        filename = Path(kubeconfig_value.replace("\\", "/")).name
+        if not filename or filename in {".", ".."}:
+            raise KubernetesConfigurationError(f"环境 {alias} 的 k8s_kubeconfig 无效")
+        kubeconfig = validate_kubeconfig_path(kubeconfig_dir / filename)
+        if alias in clusters:
+            raise KubernetesConfigurationError(f"集群别名重复：{alias}")
+        context = item.get("k8s_context")
+        if context is not None and (not isinstance(context, str) or not context.strip()):
+            raise KubernetesConfigurationError(f"环境 {alias} 的 k8s_context 必须是非空字符串")
+        clusters[alias] = RegisteredCluster(alias, kubeconfig, context.strip() if context else None)
+    if not clusters:
+        raise KubernetesConfigurationError("环境配置中未找到 k8s_kubeconfig")
+    return clusters
 
 
 def validate_kubeconfig_path(value: str) -> Path:
@@ -47,4 +127,3 @@ def create_api_client(kubeconfig: str, context: str | None = None) -> tuple[clie
         raise
     except (ConfigException, OSError, ValueError) as error:
         raise KubernetesConfigurationError("无法加载 kubeconfig，请检查文件格式和 context") from error
-

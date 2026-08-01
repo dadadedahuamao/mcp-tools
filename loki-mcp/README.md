@@ -43,3 +43,19 @@ contains: "NullPointerException"
 - 仅访问 Grafana 数据源代理的 Loki `query_range` 接口；不支持写入、删除和 tail。
 - `limit` 默认 200，最大 2,000。
 - UAT 域名 `mesu.xcmg.com` 使用旧 TLS 协商兼容选项，但仍保持服务器证书校验。
+
+## Linux Docker 部署
+
+将服务器上的真实 `env.yaml` 保存为 `config/env.yaml`（该文件已被 Git 忽略），然后执行：
+
+```bash
+cp config/env.yaml.example config/env.yaml
+cp .env.example .env
+chmod 600 config/env.yaml
+chown 10001:10001 config/env.yaml
+# 编辑 config/env.yaml
+# 编辑 .env，将 LOKI_MCP_ALLOWED_HOST 改为实际服务器 IP 或域名及端口
+docker-compose up -d --build
+```
+
+服务地址为 `http://<服务器IP或域名>:8001/mcp`。`.env` 中的 `LOKI_MCP_ALLOWED_HOST` 必须与该 URL 中的 `IP 或域名:8001` 一致。`env.yaml` 通过只读卷挂载到容器，不会进入镜像；修改后执行 `docker-compose restart loki-mcp`。

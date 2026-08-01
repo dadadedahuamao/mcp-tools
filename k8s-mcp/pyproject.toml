@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
   "kubernetes>=32.0,<33.0",
   "mcp>=1.0,<2.0",
+  "PyYAML>=6.0,<7.0",
 ]
 
 [project.optional-dependencies]
@@ -15,3 +16,5 @@ build = ["pyinstaller>=6.0,<7.0"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.setuptools.packages.find]
+include = ["k8s_mcp*"]

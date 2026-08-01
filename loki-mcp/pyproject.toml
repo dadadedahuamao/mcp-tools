@@ -14,3 +14,6 @@ build = ["pyinstaller>=6.0,<7.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["loki_mcp*"]

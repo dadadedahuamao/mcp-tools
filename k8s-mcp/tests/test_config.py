@@ -7,7 +7,12 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from k8s_mcp.config import KubernetesConfigurationError, validate_kubeconfig_path
+from k8s_mcp.config import (
+    KubernetesConfigurationError,
+    load_cluster_registry,
+    load_environment_registry,
+    validate_kubeconfig_path,
+)
 
 
 def test_validate_kubeconfig_path_rejects_relative_path() -> None:
@@ -26,3 +31,32 @@ def test_validate_kubeconfig_path_accepts_absolute_file(tmp_path: Path) -> None:
 
     assert validate_kubeconfig_path(str(kubeconfig)) == kubeconfig
 
+
+def test_load_cluster_registry_maps_alias_to_preconfigured_kubeconfig(tmp_path: Path) -> None:
+    kubeconfig = tmp_path / "uat.yaml"
+    kubeconfig.write_text("apiVersion: v1", encoding="utf-8")
+    registry = tmp_path / "clusters.yaml"
+    registry.write_text(f"clusters:\n  uat:\n    kubeconfig: {kubeconfig}\n    context: uat-context\n", encoding="utf-8")
+
+    loaded = load_cluster_registry(registry.resolve())
+
+    assert loaded["uat"].kubeconfig == kubeconfig
+    assert loaded["uat"].context == "uat-context"
+
+
+def test_load_environment_registry_maps_env_name_to_kubeconfig_basename(tmp_path: Path) -> None:
+    kubeconfig = tmp_path / "cce-cloudpond-uat-mes-kubeconfig.yaml"
+    kubeconfig.write_text("apiVersion: v1", encoding="utf-8")
+    environment = tmp_path / "env.yaml"
+    environment.write_text(
+        "env:\n"
+        "  - env_name: UAT\n"
+        "    k8s_kubeconfig: .mcp/k8s-mcp/cce-cloudpond-uat-mes-kubeconfig.yaml\n"
+        "  - env_name: Production\n",
+        encoding="utf-8",
+    )
+
+    loaded = load_environment_registry(environment.resolve(), tmp_path.resolve())
+
+    assert list(loaded) == ["UAT"]
+    assert loaded["UAT"].kubeconfig == kubeconfig

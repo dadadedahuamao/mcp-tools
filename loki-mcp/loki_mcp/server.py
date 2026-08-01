@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from loki_mcp.client import LokiQueryError, query_logs
 from loki_mcp.config import LokiConfigurationError, load_environment
@@ -21,12 +22,21 @@ def parse_timestamp(value: str) -> datetime:
     return parsed
 
 
-def create_server(env_file: Path) -> FastMCP:
-    """创建使用指定环境配置文件的 stdio MCP 服务。"""
+def create_server(
+    env_file: Path,
+    *,
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    allowed_hosts: list[str] | None = None,
+) -> FastMCP:
+    """创建使用指定环境配置文件的 MCP 服务。"""
 
     server = FastMCP(
         "loki",
         instructions="按环境读取 env.yaml，仅执行受限的只读 Loki 日志范围查询。",
+        host=host,
+        port=port,
+        transport_security=(TransportSecuritySettings(allowed_hosts=allowed_hosts) if allowed_hosts else None),
     )
 
     @server.tool(
