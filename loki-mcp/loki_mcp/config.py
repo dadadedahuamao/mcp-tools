@@ -74,15 +74,19 @@ def load_environment(env_file: Path, environment: str) -> LokiEnvironment:
     if not all(isinstance(item, dict) for item in environments):
         raise LokiConfigurationError("env.yaml 的 env 环境列表只能包含对象")
     match = resolve_environment(environments, environment)
+    nested = match.get("loki")
+    if not isinstance(nested, dict):
+        raise LokiConfigurationError(f"环境 {environment} 缺少 loki 配置块")
 
     required_fields = {
-        "loki_url": "Grafana 地址",
-        "loki_datasource_uid": "Loki 数据源 UID",
-        "loki_user_name": "Loki 用户名",
-        "loki_passwd": "Loki 密码",
-        "loki_query": "默认 LogQL",
+        "url": "Grafana 地址",
+        "datasource_uid": "Loki 数据源 UID",
+        "username": "Loki 用户名",
+        "query": "默认 LogQL",
     }
-    missing = [label for field, label in required_fields.items() if not match.get(field)]
+    missing = [label for field, label in required_fields.items() if not nested.get(field)]
+    if "password" not in nested:
+        missing.append("Loki 密码")
     if missing:
         raise LokiConfigurationError(
             f"环境 {environment} 缺少 Loki 配置：{', '.join(missing)}"
@@ -90,9 +94,9 @@ def load_environment(env_file: Path, environment: str) -> LokiEnvironment:
 
     return LokiEnvironment(
         name=str(match["env_name"]),
-        base_url=str(match["loki_url"]).rstrip("/"),
-        datasource_uid=str(match["loki_datasource_uid"]),
-        username=str(match["loki_user_name"]),
-        password=str(match["loki_passwd"]),
-        query=str(match["loki_query"]),
+        base_url=str(nested["url"]).rstrip("/"),
+        datasource_uid=str(nested["datasource_uid"]),
+        username=str(nested["username"]),
+        password=str(nested["password"]),
+        query=str(nested["query"]),
     )

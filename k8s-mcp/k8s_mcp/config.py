@@ -90,7 +90,7 @@ def load_cluster_registry(config_file: Path) -> dict[str, RegisteredCluster]:
 
 
 def load_environment_registry(env_file: Path, kubeconfig_dir: Path) -> dict[str, RegisteredCluster]:
-    """从共享 env.yaml 注册含 k8s_kubeconfig 的环境。"""
+    """从共享 env.yaml 注册含 k8s.kubeconfig 的环境。"""
 
     if not env_file.is_absolute() or not env_file.is_file():
         raise KubernetesConfigurationError("环境配置文件必须是存在的绝对文件路径")
@@ -108,27 +108,30 @@ def load_environment_registry(env_file: Path, kubeconfig_dir: Path) -> dict[str,
     for item in environments:
         if not isinstance(item, dict):
             raise KubernetesConfigurationError("env 环境列表只能包含对象")
-        kubeconfig_value = item.get("k8s_kubeconfig")
+        nested = item.get("k8s")
+        if not isinstance(nested, dict):
+            continue
+        kubeconfig_value = nested.get("kubeconfig")
         if kubeconfig_value in (None, ""):
             continue
         alias = item.get("env_name")
         if not isinstance(alias, str) or not alias.strip():
-            raise KubernetesConfigurationError("包含 k8s_kubeconfig 的环境必须提供 env_name")
+            raise KubernetesConfigurationError("包含 k8s.kubeconfig 的环境必须提供 env_name")
         alias = alias.strip()
         if not isinstance(kubeconfig_value, str):
-            raise KubernetesConfigurationError(f"环境 {alias} 的 k8s_kubeconfig 必须是字符串")
+            raise KubernetesConfigurationError(f"环境 {alias} 的 k8s.kubeconfig 必须是字符串")
         filename = Path(kubeconfig_value.replace("\\", "/")).name
         if not filename or filename in {".", ".."}:
-            raise KubernetesConfigurationError(f"环境 {alias} 的 k8s_kubeconfig 无效")
+            raise KubernetesConfigurationError(f"环境 {alias} 的 k8s.kubeconfig 无效")
         kubeconfig = validate_kubeconfig_path(kubeconfig_dir / filename)
         if alias in clusters:
             raise KubernetesConfigurationError(f"集群别名重复：{alias}")
-        context = item.get("k8s_context")
+        context = nested.get("context")
         if context is not None and (not isinstance(context, str) or not context.strip()):
             raise KubernetesConfigurationError(f"环境 {alias} 的 k8s_context 必须是非空字符串")
         clusters[alias] = RegisteredCluster(alias, kubeconfig, context.strip() if context else None)
     if not clusters:
-        raise KubernetesConfigurationError("环境配置中未找到 k8s_kubeconfig")
+        raise KubernetesConfigurationError("环境配置中未找到 k8s.kubeconfig")
     return clusters
 
 

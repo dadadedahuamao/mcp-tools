@@ -64,7 +64,8 @@ def test_load_environment_registry_maps_env_name_to_kubeconfig_basename(tmp_path
     environment.write_text(
         "env:\n"
         "  - env_name: UAT\n"
-        "    k8s_kubeconfig: .mcp/k8s-mcp/cce-cloudpond-uat-mes-kubeconfig.yaml\n"
+        "    k8s:\n"
+        "      kubeconfig: .mcp/k8s-mcp/cce-cloudpond-uat-mes-kubeconfig.yaml\n"
         "  - env_name: Production\n",
         encoding="utf-8",
     )
@@ -73,6 +74,14 @@ def test_load_environment_registry_maps_env_name_to_kubeconfig_basename(tmp_path
 
     assert list(loaded) == ["UAT"]
     assert loaded["UAT"].kubeconfig == kubeconfig
+
+
+def test_load_environment_registry_rejects_legacy_flat_fields(tmp_path: Path) -> None:
+    kubeconfig_dir = tmp_path / "kubeconfigs"; kubeconfig_dir.mkdir()
+    environment = tmp_path / "env.yaml"
+    environment.write_text("env:\n  - env_name: UAT\n    k8s_kubeconfig: legacy.yaml\n", encoding="utf-8")
+    with pytest.raises(KubernetesConfigurationError, match="k8s.kubeconfig"):
+        load_environment_registry(environment.resolve(), kubeconfig_dir.resolve())
 
 
 def test_resolve_registered_cluster_accepts_unique_business_name(tmp_path: Path) -> None:

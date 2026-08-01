@@ -64,14 +64,7 @@ def test_load_config_accepts_unified_env_yaml(tmp_path: Path) -> None:
             "env": [
                 {
                     "env_name": "UAT",
-                    "db_connect_name": "mes_pg",
-                    "db_type": "postgres",
-                    "db_host": "db.internal",
-                    "db_port": "5432",
-                    "db_name": "operations",
-                    "db_user": "readonly",
-                    "db_passwd": "local-only-password",
-                    "schema": "public",
+                    "db": {"connect_name": "mes_pg", "type": "postgres", "host": "db.internal", "port": "5432", "name": "operations", "user": "readonly", "password": "local-only-password", "schema": "public"},
                 }
             ]
         },
@@ -83,6 +76,12 @@ def test_load_config_accepts_unified_env_yaml(tmp_path: Path) -> None:
     assert source.database == "operations"
     assert source.default_schema == "public"
     assert source.allowed_schemas == frozenset({"public"})
+
+
+def test_load_config_rejects_legacy_flat_env_fields(tmp_path: Path) -> None:
+    config_path = write_config(tmp_path, {"env": [{"env_name": "UAT", "db_connect_name": "legacy"}]})
+    with pytest.raises(DatabaseConfigurationError, match="db 配置块"):
+        load_config(config_path.resolve())
 
 
 def test_load_config_requires_an_absolute_path(tmp_path: Path) -> None:

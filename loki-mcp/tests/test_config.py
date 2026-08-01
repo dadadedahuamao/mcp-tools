@@ -19,11 +19,7 @@ def test_load_environment_returns_exact_loki_configuration(tmp_path: Path) -> No
                 "env": [
                     {
                         "env_name": "矿机(一期生产)",
-                        "loki_url": "https://mes.xcmg.com/grafana/",
-                        "loki_datasource_uid": "loki-production",
-                        "loki_user_name": "readonly",
-                        "loki_passwd": "secret",
-                        "loki_query": '{app="mmom-kj"}',
+                        "loki": {"url": "https://mes.xcmg.com/grafana/", "datasource_uid": "loki-production", "username": "readonly", "password": "secret", "query": '{app="mmom-kj"}'},
                     }
                 ]
             },
@@ -44,7 +40,7 @@ def test_load_environment_accepts_unique_business_name(tmp_path: Path) -> None:
     env_file = tmp_path / "env.yaml"
     env_file.write_text(
         yaml.safe_dump(
-            {"env": [{"env_name": "道路(道路、筑路、养护)(二期UAT)", "loki_url": "https://grafana.example", "loki_datasource_uid": "road", "loki_user_name": "readonly", "loki_passwd": "secret", "loki_query": '{app="road"}'}]},
+            {"env": [{"env_name": "道路(道路、筑路、养护)(二期UAT)", "loki": {"url": "https://grafana.example", "datasource_uid": "road", "username": "readonly", "password": "secret", "query": '{app="road"}'}}]},
             allow_unicode=True,
         ),
         encoding="utf-8",
@@ -67,3 +63,10 @@ def test_load_environment_rejects_ambiguous_business_name(tmp_path: Path) -> Non
 
     with pytest.raises(LokiConfigurationError, match="不唯一"):
         load_environment(env_file, "重型")
+
+
+def test_load_environment_rejects_legacy_flat_fields(tmp_path: Path) -> None:
+    env_file = tmp_path / "env.yaml"
+    env_file.write_text(yaml.safe_dump({"env": [{"env_name": "本地", "loki_url": "legacy"}]}, allow_unicode=True), encoding="utf-8")
+    with pytest.raises(LokiConfigurationError, match="loki 配置块"):
+        load_environment(env_file, "本地")

@@ -122,30 +122,33 @@ def _datasources_from_unified_env(raw_config: Mapping[str, Any]) -> dict[str, di
     for item in environments:
         if not isinstance(item, dict):
             raise DatabaseConfigurationError("env 环境列表只能包含对象")
-        alias = item.get("db_connect_name")
+        nested = item.get("db")
+        if not isinstance(nested, dict):
+            raise DatabaseConfigurationError(f"环境 {item.get('env_name', '<unknown>')} 缺少 db 配置块")
+        alias = nested.get("connect_name")
         if not isinstance(alias, str) or not alias.strip():
-            raise DatabaseConfigurationError("env 环境缺少有效的 db_connect_name")
+            raise DatabaseConfigurationError("env.db 缺少有效的 connect_name")
         if alias in sources:
             raise DatabaseConfigurationError(f"数据源别名重复：{alias}")
-        raw_dialect = item.get("db_type")
+        raw_dialect = nested.get("type")
         dialect = dialects.get(raw_dialect.lower()) if isinstance(raw_dialect, str) else None
         if dialect is None:
             raise DatabaseConfigurationError(f"数据源 {alias} 使用了不支持的 db_type")
-        username = item.get("db_user")
-        schema = item.get("schema") or username
-        port = item.get("db_port")
+        username = nested.get("user")
+        schema = nested.get("schema") or username
+        port = nested.get("port")
         if isinstance(port, str) and port.strip().isdigit():
             port = int(port.strip())
         source: dict[str, Any] = {
             "dialect": dialect,
-            "host": item.get("db_host"),
+            "host": nested.get("host"),
             "port": port,
             "username": username,
-            "password": item.get("db_passwd"),
+            "password": nested.get("password"),
             "default_schema": schema,
             "allowed_schemas": [schema] if isinstance(schema, str) and schema.strip() else [],
         }
-        source["service_name" if dialect == "oracle" else "database"] = item.get("db_name")
+        source["service_name" if dialect == "oracle" else "database"] = nested.get("name")
         sources[alias.strip()] = source
     return sources
 
@@ -181,7 +184,7 @@ def _parse_source(alias: str, raw: Mapping[str, Any]) -> DatabaseSource:
     username = _required_string(raw, "username", alias)
     plain_password = raw.get("password")
     raw_password_env = raw.get("password_env")
-    if isinstance(plain_password, str) and plain_password:
+    if isinstance(plain_password, str):
         if raw_password_env is not None:
             raise DatabaseConfigurationError(f"数据源 {alias} 的 password 与 password_env 只能二选一")
         password_env = None
