@@ -1,0 +1,20 @@
+[project]
+name = "redis-mcp"
+version = "0.1.0"
+description = "按项目 env.yaml 执行受限只读 Redis 生产排障的 MCP"
+requires-python = ">=3.12"
+dependencies = [
+  "mcp>=1.0,<2.0",
+  "PyYAML>=6.0,<7.0",
+  "redis>=5.0,<7.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=9.0,<10.0"]
+build = ["pyinstaller>=6.0,<7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["redis_mcp*"]
