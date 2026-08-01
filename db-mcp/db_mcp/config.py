@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 import os
 from pathlib import Path
 from typing import Any, Mapping
+import re
+import unicodedata
 
 import yaml
 
@@ -57,6 +59,24 @@ class DatabaseConfig:
     """按别名索引的预注册数据源集合。"""
 
     sources: Mapping[str, DatabaseSource]
+
+
+_GENERIC_ALIAS_TERMS = ("kubernetes", "k8s", "环境", "集群", "一期", "二期", "uat", "生产", "测试", "test")
+
+
+def _normalize_alias(value: str) -> str:
+    """规范化别名，消除全半角、大小写、空白和分隔符差异。"""
+
+    return re.sub(r"[^\\w]", "", unicodedata.normalize("NFKC", value).casefold())
+
+
+def _business_key(value: str) -> str:
+    """去除环境通用词，仅保留用于唯一识别业务域的文本。"""
+
+    normalized = _normalize_alias(value)
+    for term in _GENERIC_ALIAS_TERMS:
+        normalized = normalized.replace(term, "")
+    return normalized
 
 
 def load_config(config_file: Path) -> DatabaseConfig:
@@ -131,12 +151,19 @@ def _datasources_from_unified_env(raw_config: Mapping[str, Any]) -> dict[str, di
 
 
 def load_source(config: DatabaseConfig, alias: str) -> DatabaseSource:
-    """按已预注册的别名取得数据源，禁止运行时任意连接。"""
+    """按已预注册的别名取得数据源，允许唯一业务名称匹配。"""
 
-    try:
+    if alias in config.sources:
         return config.sources[alias]
-    except KeyError as error:
-        raise DatabaseConfigurationError(f"未找到预注册数据源：{alias}") from error
+    normalized = _normalize_alias(alias)
+    normalized_matches = [source for registered, source in config.sources.items() if _normalize_alias(registered) == normalized]
+    if len(normalized_matches) == 1:
+        return normalized_matches[0]
+    business_key = _business_key(alias)
+    business_matches = [source for registered, source in config.sources.items() if len(business_key) >= 2 and business_key in _business_key(registered)]
+    if len(normalized_matches) > 1 or len(business_matches) > 1:
+        raise DatabaseConfigurationError("预注册数据源别名匹配不唯一，请提供正式别名")
+    raise DatabaseConfigurationError(f"未找到预注册数据源：{alias}")
 
 
 def _parse_source(alias: str, raw: Mapping[str, Any]) -> DatabaseSource:

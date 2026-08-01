@@ -12,7 +12,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--env-file", required=True, type=Path, help="env.yaml 绝对路径")
     parser.add_argument("--transport", choices=("stdio", "streamable-http"), default="stdio")
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--port", type=int, default=18001)
     parser.add_argument("--allowed-host", action="append", default=[])
     return parser
 

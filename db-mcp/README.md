@@ -125,7 +125,7 @@ docker compose up -d --build
 docker compose logs -f db-mcp
 ```
 
-Compose 默认监听 `0.0.0.0:8000`。`.env` 中的 `DB_MCP_ALLOWED_HOST` 必须设置为实际访问 URL 中的 `IP 或域名:8000`；MCP 端点为 `http://<服务器IP或域名>:8000/mcp`。需要给其他人 URL 时，在同一服务器配置 TLS 反向代理，并使用 `deploy/nginx.conf.example` 作为模板，最终公开地址为 `https://<你的域名>/mcp`。
+Compose 默认监听 `0.0.0.0:18000`。`.env` 中的 `DB_MCP_ALLOWED_HOST` 必须设置为实际访问 URL 中的 `IP 或域名:18000`；MCP 端点为 `http://<服务器IP或域名>:18000/mcp`。需要给其他人 URL 时，在同一服务器配置 TLS 反向代理，并使用 `deploy/nginx.conf.example` 作为模板，最终公开地址为 `https://<你的域名>/mcp`。
 
 请在 Nginx/API 网关层接入企业 SSO、mTLS 或 Bearer Token 校验后再对外开放。当前 Compose 的默认端口开放仅适用于受信任内网；如需覆盖监听地址，修改 `.env` 中的 `DB_MCP_BIND_ADDRESS`。
 

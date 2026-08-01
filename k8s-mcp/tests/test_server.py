@@ -9,6 +9,12 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from k8s_mcp.server import create_server
 
 
+def test_server_defaults_to_k8s_http_port() -> None:
+    server = create_server()
+
+    assert server.settings.port == 18002
+
+
 def test_server_registers_only_read_only_tools() -> None:
     server = create_server()
     names = set(server._tool_manager._tools)

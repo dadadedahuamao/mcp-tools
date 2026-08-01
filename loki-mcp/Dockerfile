@@ -6,6 +6,6 @@ COPY loki_mcp ./loki_mcp
 COPY main.py ./
 RUN pip install . && groupadd --system --gid 10001 lokimcp && useradd --system --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin lokimcp && mkdir -p /etc/loki-mcp && chown -R lokimcp:lokimcp /app /etc/loki-mcp
 USER 10001:10001
-EXPOSE 8001
+EXPOSE 18001
 ENTRYPOINT ["python", "main.py"]
-CMD ["--env-file", "/etc/loki-mcp/env.yaml", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["--env-file", "/etc/loki-mcp/env.yaml", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "18001"]

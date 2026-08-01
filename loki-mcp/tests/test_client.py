@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+import ssl
 from datetime import datetime, timezone
 from urllib.parse import parse_qs, urlparse
 
@@ -7,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from loki_mcp.client import append_contains_filter, build_range_request, query_logs
+from loki_mcp.client import _ssl_context, append_contains_filter, build_range_request, query_logs
 from loki_mcp.config import LokiEnvironment
 
 
@@ -43,6 +44,21 @@ def test_build_range_request_uses_grafana_proxy_and_nanosecond_window() -> None:
     assert parameters["end"] == ["1785297660000000000"]
     assert parameters["limit"] == ["200"]
     assert request.get_header("Authorization").startswith("Basic ")
+
+
+def test_production_mes_host_enables_legacy_tls_compatibility() -> None:
+    config = LokiEnvironment(
+        name="生产环境",
+        base_url="https://mes.xcmg.com/grafana",
+        datasource_uid="loki-uid",
+        username="readonly",
+        password="secret",
+        query='{app="mes"}',
+    )
+
+    context = _ssl_context(config)
+
+    assert context.options & ssl.OP_LEGACY_SERVER_CONNECT
 
 
 def test_query_logs_returns_compact_entries_without_credentials() -> None:

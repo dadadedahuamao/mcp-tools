@@ -58,4 +58,4 @@ chown 10001:10001 config/env.yaml
 docker-compose up -d --build
 ```
 
-服务地址为 `http://<服务器IP或域名>:8001/mcp`。`.env` 中的 `LOKI_MCP_ALLOWED_HOST` 必须与该 URL 中的 `IP 或域名:8001` 一致。`env.yaml` 通过只读卷挂载到容器，不会进入镜像；修改后执行 `docker-compose restart loki-mcp`。
+服务地址为 `http://<服务器IP或域名>:18001/mcp`。`.env` 中的 `LOKI_MCP_ALLOWED_HOST` 必须与该 URL 中的 `IP 或域名:18001` 一致。`env.yaml` 通过只读卷挂载到容器，不会进入镜像；修改后执行 `docker-compose restart loki-mcp`。

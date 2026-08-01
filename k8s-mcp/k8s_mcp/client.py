@@ -1,7 +1,7 @@
 """使用 Kubernetes Python SDK 执行受限只读查询。"""
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 import re
 from typing import Any
@@ -18,6 +18,8 @@ DEFAULT_TAIL_LINES = 200
 MAX_TAIL_LINES = 2_000
 DEFAULT_LOG_BYTES = 65_536
 MAX_LOG_BYTES = 262_144
+# 中国标准时间固定为 UTC+08:00，避免 Windows 单文件程序依赖 IANA 时区数据库。
+SHANGHAI_TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
 
 
 def _safe_path_component(value: str, label: str) -> str:
@@ -56,9 +58,41 @@ def _metadata(resource: Any) -> dict[str, Any]:
 
 
 def _as_text(value: Any) -> str | None:
-    """将 SDK 时间对象转换为 MCP 可序列化文本。"""
+    """将 SDK 时间对象统一转换为上海时区的秒级可展示文本。"""
 
-    return value.isoformat() if hasattr(value, "isoformat") else (str(value) if value else None)
+    if isinstance(value, datetime):
+        localized = value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+        return localized.astimezone(SHANGHAI_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(value, date):
+        return datetime.combine(value, datetime.min.time(), tzinfo=SHANGHAI_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
+    return str(value) if value else None
+
+
+def _event_summary(item: Any) -> dict[str, Any]:
+    """兼容 Events v1 与 CoreV1 Event 的安全摘要字段。"""
+
+    regarding = getattr(item, "regarding", None) or getattr(item, "involved_object", None)
+    event_time = next(
+        (
+            _as_text(value)
+            for value in (
+                getattr(item, "event_time", None),
+                getattr(item, "last_timestamp", None),
+                getattr(item, "first_timestamp", None),
+                getattr(item.metadata, "creation_timestamp", None),
+            )
+            if _as_text(value) is not None
+        ),
+        None,
+    )
+    return {
+        **_metadata(item),
+        "type": getattr(item, "type", None),
+        "reason": getattr(item, "reason", None),
+        "note": getattr(item, "note", None) or getattr(item, "message", None),
+        "regarding": {"kind": getattr(regarding, "kind", None), "name": getattr(regarding, "name", None)},
+        "event_time": event_time,
+    }
 
 
 def _api_error(error: ApiException) -> KubernetesQueryError:
@@ -150,12 +184,20 @@ class KubernetesReader:
             raise _api_error(error) from error
 
     def list_events(self, namespace: str, limit: int = DEFAULT_LIMIT) -> list[dict[str, Any]]:
-        """按命名空间限量列出 Kubernetes Events v1 事件。"""
+        """按命名空间限量列出事件；兼容 event_time 为空的旧事件。"""
 
         limit = _positive_limit(limit, MAX_LIMIT, "limit")
         try:
             response = client.EventsV1Api(self.api_client).list_namespaced_event(namespace=namespace, limit=limit)
-            return [{**_metadata(item), "type": item.type, "reason": item.reason, "note": item.note, "regarding": {"kind": getattr(item.regarding, "kind", None), "name": getattr(item.regarding, "name", None)}, "event_time": _as_text(item.event_time)} for item in response.items]
+            return [_event_summary(item) for item in response.items]
+        except ValueError as error:
+            if "event_time" not in str(error) or "None" not in str(error):
+                raise
+            try:
+                response = client.CoreV1Api(self.api_client).list_namespaced_event(namespace=namespace, limit=limit)
+                return [_event_summary(item) for item in response.items]
+            except ApiException as fallback_error:
+                raise _api_error(fallback_error) from fallback_error
         except ApiException as error:
             raise _api_error(error) from error
 

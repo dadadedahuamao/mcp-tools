@@ -20,7 +20,7 @@ RUN pip install . \
 
 USER 10001:10001
 
-EXPOSE 8000
+EXPOSE 18000
 
 ENTRYPOINT ["python", "main.py"]
 CMD ["--config-file", "/etc/db-mcp/env.yaml", "--transport", "streamable-http"]

@@ -68,4 +68,4 @@ chown 10001:10001 config/env.yaml config/*kubeconfig.yaml
 docker-compose up -d --build
 ```
 
-服务地址为 `http://<服务器IP或域名>:8002/mcp`。`.env` 中的 `K8S_MCP_ALLOWED_HOST` 必须与该 URL 中的 `IP 或域名:8002` 一致。远程调用以统一配置中的 `env_name` 作为 `cluster` 参数；仅含 `k8s_kubeconfig` 的环境会被注册。配置文件和 kubeconfig 均以只读卷挂载，不会写入镜像。
+服务地址为 `http://<服务器IP或域名>:18002/mcp`。`.env` 中的 `K8S_MCP_ALLOWED_HOST` 必须与该 URL 中的 `IP 或域名:18002` 一致。远程调用以统一配置中的 `env_name` 作为 `cluster` 参数；仅含 `k8s_kubeconfig` 的环境会被注册。配置文件和 kubeconfig 均以只读卷挂载，不会写入镜像。

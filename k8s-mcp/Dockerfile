@@ -6,6 +6,6 @@ COPY k8s_mcp ./k8s_mcp
 COPY main.py ./
 RUN pip install . && groupadd --system --gid 10001 k8smcp && useradd --system --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin k8smcp && mkdir -p /etc/k8s-mcp && chown -R k8smcp:k8smcp /app /etc/k8s-mcp
 USER 10001:10001
-EXPOSE 8002
+EXPOSE 18002
 ENTRYPOINT ["python", "main.py"]
-CMD ["--transport", "streamable-http", "--env-file", "/etc/k8s-mcp/env.yaml", "--kubeconfig-dir", "/etc/k8s-mcp", "--host", "0.0.0.0", "--port", "8002"]
+CMD ["--transport", "streamable-http", "--env-file", "/etc/k8s-mcp/env.yaml", "--kubeconfig-dir", "/etc/k8s-mcp", "--host", "0.0.0.0", "--port", "18002"]

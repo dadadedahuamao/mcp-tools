@@ -73,11 +73,11 @@ def build_range_request(
 
 
 def _ssl_context(config: LokiEnvironment) -> ssl.SSLContext:
-    """保留证书校验，仅为 UAT Grafana 启用必要的旧协商兼容性。"""
+    """保留证书校验，仅为已确认需要旧协商的 Grafana 启用兼容性。"""
 
     context = ssl.create_default_context()
     hostname = urlparse(config.base_url).hostname or ""
-    if hostname.endswith("mesu.xcmg.com"):
+    if hostname in {"mesu.xcmg.com", "mes.xcmg.com"}:
         context.options |= ssl.OP_LEGACY_SERVER_CONNECT
     return context
 

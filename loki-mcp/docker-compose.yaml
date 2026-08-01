@@ -4,7 +4,7 @@ services:
     image: loki-mcp:latest
     restart: unless-stopped
     ports:
-      - "${LOKI_MCP_BIND_ADDRESS:-0.0.0.0}:8001:8001"
+      - "${LOKI_MCP_BIND_ADDRESS:-0.0.0.0}:18001:18001"
     volumes:
       - ./config/env.yaml:/etc/loki-mcp/env.yaml:ro
     command:
@@ -15,6 +15,6 @@ services:
       - --host
       - 0.0.0.0
       - --port
-      - "8001"
+      - "18001"
       - --allowed-host
       - ${LOKI_MCP_ALLOWED_HOST:?请在 .env 中设置 LOKI_MCP_ALLOWED_HOST}

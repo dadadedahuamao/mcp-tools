@@ -148,3 +148,20 @@ def test_load_config_rejects_nonwhitelisted_default_schema(tmp_path: Path, monke
 
     with pytest.raises(DatabaseConfigurationError, match="default_schema"):
         load_config(config_path.resolve())
+
+
+def test_load_source_accepts_unique_business_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_MCP_TEST_PASSWORD", "secret")
+    config_path = write_config(tmp_path, {"datasources": {"道路(二期UAT)": valid_source()}})
+
+    source = load_source(load_config(config_path.resolve()), "二期道路环境")
+
+    assert source.alias == "道路(二期UAT)"
+
+
+def test_load_source_rejects_ambiguous_business_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_MCP_TEST_PASSWORD", "secret")
+    config_path = write_config(tmp_path, {"datasources": {"重型(一期UAT)": valid_source(), "重型车辆(二期UAT)": valid_source(database="vehicle")}})
+
+    with pytest.raises(DatabaseConfigurationError, match="不唯一"):
+        load_source(load_config(config_path.resolve()), "重型")

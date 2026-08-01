@@ -25,10 +25,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--allowed-host",
         action="append",
         default=[],
-        help="HTTP 请求允许的 Host（可重复传入，如 192.168.1.10:8000）",
+        help="HTTP 请求允许的 Host（可重复传入，如 192.168.1.10:18000）",
     )
     parser.add_argument("--host", default="127.0.0.1", help="HTTP 监听地址")
-    parser.add_argument("--port", type=int, default=8000, help="HTTP 监听端口")
+    parser.add_argument("--port", type=int, default=18000, help="HTTP 监听端口")
     return parser
 
 

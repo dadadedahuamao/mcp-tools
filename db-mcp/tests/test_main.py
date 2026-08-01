@@ -13,6 +13,7 @@ def test_parser_defaults_to_stdio() -> None:
     args = build_parser().parse_args(["--config-file", "/etc/db-mcp/datasources.yaml"])
 
     assert args.transport == "stdio"
+    assert args.port == 18000
 
 
 def test_parser_accepts_streamable_http_transport() -> None:
@@ -31,17 +32,17 @@ def test_parser_accepts_explicit_http_allowed_host() -> None:
             "--transport",
             "streamable-http",
             "--allowed-host",
-            "192.168.1.10:8000",
+            "192.168.1.10:18000",
         ]
     )
 
-    assert args.allowed_host == ["192.168.1.10:8000"]
+    assert args.allowed_host == ["192.168.1.10:18000"]
 
 
 def test_parser_accepts_explicit_http_listener() -> None:
     args = build_parser().parse_args(
-        ["--config-file", "/etc/db-mcp/datasources.yaml", "--host", "0.0.0.0", "--port", "8000"]
+        ["--config-file", "/etc/db-mcp/datasources.yaml", "--host", "0.0.0.0", "--port", "18000"]
     )
 
     assert args.host == "0.0.0.0"
-    assert args.port == 8000
+    assert args.port == 18000

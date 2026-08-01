@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 import sys
@@ -8,7 +9,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from k8s_mcp.client import KubernetesReader
+from k8s_mcp.client import KubernetesReader, _as_text
 
 
 def resource(name: str, namespace: str = "default") -> SimpleNamespace:
@@ -68,6 +69,63 @@ def test_list_limit_rejects_excessive_value() -> None:
 
     with pytest.raises(ValueError, match="500"):
         reader.list_pods("ns-demo", limit=501)
+
+
+def test_as_text_formats_kubernetes_timestamp_in_shanghai_timezone() -> None:
+    timestamp = datetime(2026, 7, 31, 16, 0, tzinfo=timezone.utc)
+
+    assert _as_text(timestamp) == "2026-08-01 00:00:00"
+
+
+def test_list_events_falls_back_to_core_v1_when_events_v1_has_missing_event_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+    event = SimpleNamespace(
+        metadata=SimpleNamespace(
+            name="pod-failed", namespace="ns-demo", creation_timestamp=datetime(2026, 7, 31, 16, 0, tzinfo=timezone.utc), labels={}
+        ),
+        type="Warning",
+        reason="BackOff",
+        message="Back-off restarting failed container",
+        involved_object=SimpleNamespace(kind="Pod", name="demo-pod"),
+        last_timestamp=datetime(2026, 7, 31, 16, 1, tzinfo=timezone.utc),
+    )
+
+    class FakeEventsV1Api:
+        def __init__(self, _: object) -> None:
+            pass
+
+        def list_namespaced_event(self, **_: object) -> SimpleNamespace:
+            calls.append("events-v1")
+            raise ValueError("Invalid value for `event_time`, must not be `None`")
+
+    class FakeCoreV1Api:
+        def __init__(self, _: object) -> None:
+            pass
+
+        def list_namespaced_event(self, **_: object) -> SimpleNamespace:
+            calls.append("core-v1")
+            return SimpleNamespace(items=[event])
+
+    monkeypatch.setattr("k8s_mcp.client.client.EventsV1Api", FakeEventsV1Api)
+    monkeypatch.setattr("k8s_mcp.client.client.CoreV1Api", FakeCoreV1Api)
+    reader = KubernetesReader(api_client=object(), context="uat")
+
+    assert reader.list_events("ns-demo", limit=10) == [
+        {
+            "name": "pod-failed",
+            "namespace": "ns-demo",
+            "creation_timestamp": "2026-08-01 00:00:00",
+            "labels": {},
+            "type": "Warning",
+            "reason": "BackOff",
+            "note": "Back-off restarting failed container",
+            "regarding": {"kind": "Pod", "name": "demo-pod"},
+            "event_time": "2026-08-01 00:01:00",
+        }
+    ]
+    assert calls == ["events-v1", "core-v1"]
 
 
 def test_list_and_get_config_map_return_non_secret_data(monkeypatch: pytest.MonkeyPatch) -> None:

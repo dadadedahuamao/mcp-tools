@@ -3,6 +3,8 @@
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Any
+import re
+import unicodedata
 
 from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
@@ -22,6 +24,42 @@ class RegisteredCluster:
     context: str | None
 
 
+_GENERIC_ALIAS_TERMS = ("kubernetes", "k8s", "环境", "集群", "一期", "二期", "uat", "生产", "测试", "test")
+
+
+def _normalize_alias(value: str) -> str:
+    """规范化别名，消除全半角、大小写、空白和分隔符差异。"""
+
+    return re.sub(r"[^\\w]", "", unicodedata.normalize("NFKC", value).casefold())
+
+
+def _business_key(value: str) -> str:
+    """去除环境通用词，仅保留用于唯一识别业务域的文本。"""
+
+    normalized = _normalize_alias(value)
+    for term in _GENERIC_ALIAS_TERMS:
+        normalized = normalized.replace(term, "")
+    return normalized
+
+
+def resolve_registered_cluster(clusters: dict[str, RegisteredCluster], requested: str) -> RegisteredCluster:
+    """精确优先解析集群别名；仅允许唯一的业务名称模糊命中。"""
+
+    if requested in clusters:
+        return clusters[requested]
+    normalized = _normalize_alias(requested)
+    normalized_matches = [cluster for alias, cluster in clusters.items() if _normalize_alias(alias) == normalized]
+    if len(normalized_matches) == 1:
+        return normalized_matches[0]
+    business_key = _business_key(requested)
+    business_matches = [cluster for alias, cluster in clusters.items() if len(business_key) >= 2 and business_key in _business_key(alias)]
+    if len(business_matches) == 1:
+        return business_matches[0]
+    if len(normalized_matches) > 1 or len(business_matches) > 1:
+        raise KubernetesConfigurationError("预注册集群别名匹配不唯一，请提供正式环境名称")
+    raise KubernetesConfigurationError("未找到预注册集群别名")
+
+
 def load_cluster_registry(config_file: Path) -> dict[str, RegisteredCluster]:
     """读取服务端集群别名，拒绝任意调用方指定 kubeconfig。"""
 
@@ -38,13 +76,16 @@ def load_cluster_registry(config_file: Path) -> dict[str, RegisteredCluster]:
     for alias, raw in raw_clusters.items():
         if not isinstance(alias, str) or not alias.strip() or not isinstance(raw, dict):
             raise KubernetesConfigurationError("集群别名和配置必须有效")
+        alias = alias.strip()
         kubeconfig = raw.get("kubeconfig")
         if not isinstance(kubeconfig, str):
             raise KubernetesConfigurationError(f"集群 {alias} 缺少 kubeconfig")
         context = raw.get("context")
         if context is not None and (not isinstance(context, str) or not context.strip()):
             raise KubernetesConfigurationError(f"集群 {alias} 的 context 必须是非空字符串")
-        clusters[alias] = RegisteredCluster(alias.strip(), validate_kubeconfig_path(kubeconfig), context.strip() if context else None)
+        if alias in clusters:
+            raise KubernetesConfigurationError(f"集群别名重复：{alias}")
+        clusters[alias] = RegisteredCluster(alias, validate_kubeconfig_path(kubeconfig), context.strip() if context else None)
     return clusters
 
 
@@ -73,6 +114,7 @@ def load_environment_registry(env_file: Path, kubeconfig_dir: Path) -> dict[str,
         alias = item.get("env_name")
         if not isinstance(alias, str) or not alias.strip():
             raise KubernetesConfigurationError("包含 k8s_kubeconfig 的环境必须提供 env_name")
+        alias = alias.strip()
         if not isinstance(kubeconfig_value, str):
             raise KubernetesConfigurationError(f"环境 {alias} 的 k8s_kubeconfig 必须是字符串")
         filename = Path(kubeconfig_value.replace("\\", "/")).name

@@ -26,7 +26,7 @@ def create_server(
     env_file: Path,
     *,
     host: str = "127.0.0.1",
-    port: int = 8000,
+    port: int = 18001,
     allowed_hosts: list[str] | None = None,
 ) -> FastMCP:
     """创建使用指定环境配置文件的 MCP 服务。"""

@@ -4,14 +4,14 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
 from k8s_mcp.client import DEFAULT_LIMIT, DEFAULT_LOG_BYTES, DEFAULT_TAIL_LINES, KubernetesReader
-from k8s_mcp.config import KubernetesConfigurationError, RegisteredCluster
+from k8s_mcp.config import KubernetesConfigurationError, RegisteredCluster, resolve_registered_cluster
 
 
 def create_server(
     clusters: dict[str, RegisteredCluster] | None = None,
     *,
     host: str = "127.0.0.1",
-    port: int = 8000,
+    port: int = 18002,
     allowed_hosts: list[str] | None = None,
 ) -> FastMCP:
     """创建 MCP；远程模式使用服务端集群别名，本地模式兼容 kubeconfig 参数。"""
@@ -28,9 +28,9 @@ def create_server(
             if clusters is not None:
                 if kubeconfig is not None:
                     raise KubernetesConfigurationError("远程服务不接受 kubeconfig，请传入 cluster 别名")
-                if not cluster or cluster not in clusters:
+                if not cluster:
                     raise KubernetesConfigurationError("未找到预注册集群别名")
-                selected = clusters[cluster]
+                selected = resolve_registered_cluster(clusters, cluster)
                 return KubernetesReader.from_kubeconfig(str(selected.kubeconfig), context or selected.context)
             if not kubeconfig:
                 raise KubernetesConfigurationError("本地调用必须提供 kubeconfig")

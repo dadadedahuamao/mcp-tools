@@ -15,7 +15,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--env-file", type=Path, help="远程服务的统一 env.yaml 绝对路径")
     parser.add_argument("--kubeconfig-dir", type=Path, help="统一 env.yaml 引用的 kubeconfig 所在绝对目录")
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--port", type=int, default=18002)
     parser.add_argument("--allowed-host", action="append", default=[])
     return parser
 
@@ -41,7 +41,7 @@ def main() -> None:
         )
     except KubernetesConfigurationError as error:
         parser.error(str(error))
-    create_server(args.clusters, host=args.host, port=args.port, allowed_hosts=args.allowed_host if args.transport == "streamable-http" else None).run(transport=args.transport)
+    create_server(clusters, host=args.host, port=args.port, allowed_hosts=args.allowed_host if args.transport == "streamable-http" else None).run(transport=args.transport)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,8 @@
 **/github-artifacts/
 **/.env
 db-mcp/config/datasources.yaml
+db-mcp/config/env.yaml
 loki-mcp/config/env.yaml
 k8s-mcp/config/clusters.yaml
+k8s-mcp/config/env.yaml
 k8s-mcp/config/kubeconfigs/

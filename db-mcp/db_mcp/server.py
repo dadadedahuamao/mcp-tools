@@ -15,7 +15,7 @@ def create_server(
     config: DatabaseConfig,
     *,
     host: str = "127.0.0.1",
-    port: int = 8000,
+    port: int = 18000,
     allowed_hosts: list[str] | None = None,
 ) -> FastMCP:
     """创建 MCP；调用者只能使用配置中已有的数据源别名。"""

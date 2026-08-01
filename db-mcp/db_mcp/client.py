@@ -58,7 +58,8 @@ class DatabaseReader:
         self._engine_factory = engine_factory
 
     def test_connection(self) -> dict[str, object]:
-        result = self._run("SELECT 1 AS connected", {})
+        sql = "SELECT 1 AS connected FROM DUAL" if self.source.dialect == "oracle" else "SELECT 1 AS connected"
+        result = self._run(sql, {})
         return {"alias": self.source.alias, "connected": bool(result["rows"])}
 
     def query(self, sql: str, parameters: dict[str, Any] | None = None, limit: int | None = None) -> dict[str, object]:

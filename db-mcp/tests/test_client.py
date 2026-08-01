@@ -76,6 +76,16 @@ def test_query_binds_parameters_and_truncates_to_source_limit() -> None:
     assert engine.connection.executed[-1][1] == {"id": 7}
 
 
+def test_oracle_connection_probe_uses_dual() -> None:
+    engine = FakeEngine()
+    reader = DatabaseReader(source(dialect="oracle"), engine_factory=lambda _source: engine)
+    reader._configure_timeout = lambda _connection: None  # type: ignore[method-assign]
+
+    reader.test_connection()
+
+    assert "FROM DUAL" in engine.connection.executed[-1][0]
+
+
 def test_query_rejects_limit_larger_than_source_cap() -> None:
     reader = DatabaseReader(source(), engine_factory=lambda _source: FakeEngine())
 
