@@ -12,6 +12,11 @@
 db-mcp/config/datasources.yaml
 db-mcp/config/env.yaml
 loki-mcp/config/env.yaml
+redis-mcp/config/env.yaml
+obs-mcp/config/env.yaml
 k8s-mcp/config/clusters.yaml
 k8s-mcp/config/env.yaml
 k8s-mcp/config/kubeconfigs/
+.github/
+.docs/
+.idea/
