@@ -18,5 +18,5 @@ k8s-mcp/config/clusters.yaml
 k8s-mcp/config/env.yaml
 k8s-mcp/config/kubeconfigs/
 .github/
-.docs/
+docs/
 .idea/
