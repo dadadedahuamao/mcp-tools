@@ -3,9 +3,12 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/db-mcp.iml" filepath="$PROJECT_DIR$/.idea/db-mcp.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/es-mcp.iml" filepath="$PROJECT_DIR$/.idea/es-mcp.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/k8s-mcp.iml" filepath="$PROJECT_DIR$/.idea/k8s-mcp.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/loki-mcp.iml" filepath="$PROJECT_DIR$/.idea/loki-mcp.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/mcp-tools.iml" filepath="$PROJECT_DIR$/.idea/mcp-tools.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/obs-mcp.iml" filepath="$PROJECT_DIR$/.idea/obs-mcp.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/redis-mcp.iml" filepath="$PROJECT_DIR$/.idea/redis-mcp.iml" />
     </modules>
   </component>
 </project>

@@ -1,0 +1,20 @@
+[project]
+name = "es-mcp"
+version = "0.1.0"
+description = "按环境进行受限、只读 Elasticsearch 接口日志查询与分析的 MCP"
+requires-python = ">=3.12"
+dependencies = [
+  "mcp>=1.0,<2.0",
+  "PyYAML>=6.0,<7.0",
+  "elasticsearch>=8.0,<9.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=9.0,<10.0"]
+build = ["pyinstaller>=6.0,<7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["es_mcp*"]

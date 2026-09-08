@@ -1,0 +1,23 @@
+services:
+  es-mcp:
+    container_name: es-mcp
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: es-mcp:latest
+    restart: unless-stopped
+    ports:
+      - "${ES_MCP_BIND_ADDRESS:-0.0.0.0}:18005:18005"
+    volumes:
+      - ../config/env.yaml:/etc/es-mcp/env.yaml:ro
+    command:
+      - --transport
+      - streamable-http
+      - --env-file
+      - /etc/es-mcp/env.yaml
+      - --host
+      - 0.0.0.0
+      - --port
+      - "18005"
+      - --allowed-host
+      - ${ES_MCP_ALLOWED_HOST:?请在 .env 中设置 ES_MCP_ALLOWED_HOST}

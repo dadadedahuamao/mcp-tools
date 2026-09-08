@@ -4,6 +4,7 @@
     <content url="file://$MODULE_DIR$/db-mcp">
       <excludeFolder url="file://$MODULE_DIR$/db-mcp/.venv" />
     </content>
+    <orderEntry type="jdk" jdkName="E:\Project\xcmg\mcp-tools\db-mcp\.venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

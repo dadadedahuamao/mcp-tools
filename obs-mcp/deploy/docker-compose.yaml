@@ -1,0 +1,23 @@
+services:
+  obs-mcp:
+    container_name: obs-mcp
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: obs-mcp:latest
+    restart: unless-stopped
+    ports:
+      - "${OBS_MCP_BIND_ADDRESS:-0.0.0.0}:18004:18004"
+    volumes:
+      - ../config/env.yaml:/etc/obs-mcp/env.yaml:ro
+    command:
+      - --transport
+      - streamable-http
+      - --env-file
+      - /etc/obs-mcp/env.yaml
+      - --host
+      - 0.0.0.0
+      - --port
+      - "18004"
+      - --allowed-host
+      - ${OBS_MCP_ALLOWED_HOST:?Set OBS_MCP_ALLOWED_HOST in .env}
